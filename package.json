@@ -1,0 +1,24 @@
+{
+  "name": "cote-ext",
+  "module": "src/index.ts",
+  "type": "module",
+  "version": "0.0.3",
+  "license": "GPL-3.0-or-later",
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "scripts": {
+    "dev": "bun run --watch src/index.ts"
+  },
+  "types": "src/Types/index.ts",
+  "exports": {
+    ".": {
+      "default": "./src/index.ts",
+      "types": "./src/Types/index.ts"
+    },
+    "./package.json": "./package.json"
+  }
+}
