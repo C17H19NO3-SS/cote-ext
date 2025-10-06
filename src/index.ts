@@ -1,4 +1,4 @@
-import { ExtendedRequester, request } from "./Classes/Requester";
-import { ExtendedResponder, on, init } from "./Classes/Responder";
+import { ExtendedRequester } from "./Classes/Requester";
+import { ExtendedResponder } from "./Classes/Responder";
 
-export { ExtendedRequester, ExtendedResponder, request, on, init };
+export { ExtendedRequester, ExtendedResponder };

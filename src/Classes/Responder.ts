@@ -1,47 +1,38 @@
 import {
   Responder,
   type DiscoveryOptions,
+  type Event,
   type ResponderAdvertisement,
 } from "cote";
 
-// Prototip -> (event -> handler) eşlemesi
-const listeners = new WeakMap<object, Map<string, Function>>();
+export class ExtendedResponder {
+  public cote: Responder;
 
-export function on<T extends Responder>(event: string) {
-  return function (target: T, key: keyof T): void {
-    let map = listeners.get(target as unknown as object);
-    if (!map) {
-      map = new Map<string, Function>();
-      listeners.set(target as unknown as object, map);
-    }
-    map.set(event, (target as any)[key] as Function);
-  };
-}
-
-export function init(res: Responder) {
-  // Her örneğe benzersiz id ver (prototipten gölgeleyerek)
-  if (!Object.prototype.hasOwnProperty.call(res, "___id")) {
-    Object.defineProperty(res, "___id", {
-      value: Math.floor(Math.random() * 100000000).toFixed(0),
-    });
-  }
-
-  // Prototipte biriken dinleyicileri bu örneğe bağla
-  const proto = Object.getPrototypeOf(res);
-  const map = listeners.get(proto);
-  if (map) {
-    map.forEach((fn, ev) => {
-      res.on(ev as "cote:added" | "cote:removed", fn.bind(res));
-    });
-  }
-}
-
-export class ExtendedResponder extends Responder {
   constructor(
-    initConfig: ResponderAdvertisement,
+    options: ResponderAdvertisement,
     discoveryOptions?: DiscoveryOptions
   ) {
-    super(initConfig, discoveryOptions);
-    init(this);
+    this.cote = new Responder(options, discoveryOptions);
+    this._autowire();
+  }
+
+  private _autowire() {
+    const proto = Object.getPrototypeOf(this);
+    const privFuncs = ["constructor", "_autowire", "on", "eventNames"];
+    for (const key of Object.getOwnPropertyNames(proto)) {
+      if (privFuncs.some((v) => v === key) || key.startsWith("c_")) continue;
+      this.cote.on(
+        key,
+        (this as any)[key] as (req: Event, cb: Function) => void
+      );
+    }
+  }
+
+  on(event: string, listener: (req: Event, cb: Function) => void) {
+    this.cote.on(event, listener);
+  }
+
+  eventNames() {
+    return this.cote.eventNames();
   }
 }
