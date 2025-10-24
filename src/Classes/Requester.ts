@@ -22,14 +22,19 @@ export class ExtendedRequester {
       if (privFuncs.some((v) => v === key) || key.startsWith("c_")) continue;
       (this as any)[key] = (req: any) => {
         return new Promise((resolve, reject) => {
+          const payload = req && typeof req === "object" ? req : { data: req };
           this.cote.send(
             {
               type: key,
-              ...req,
+              ...payload,
             },
             (err: unknown, res: any) => {
-              if (err) reject(err);
-              else resolve(res);
+              try {
+                if (err) reject(err);
+                else resolve(res);
+              } catch (error) {
+                reject(error);
+              }
             }
           );
         });

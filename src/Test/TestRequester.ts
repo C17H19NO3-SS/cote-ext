@@ -1,10 +1,14 @@
-import type { Event } from "cote";
 import { ExtendedRequester } from "../Classes/Requester";
 
 export class TestRequester extends ExtendedRequester {
   constructor() {
-    super({ name: "responder", key: "demo" });
+    super(
+      { name: "responder", key: "demo" },
+      {
+        log: false,
+      }
+    );
   }
 
-  test(req: Record<string, any>) {}
+  test(req: { hello: string }) {}
 }

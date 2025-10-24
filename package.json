@@ -2,7 +2,7 @@
   "name": "cote-ext",
   "module": "src/index.ts",
   "type": "module",
-  "version": "0.0.8",
+  "version": "0.1.0",
   "license": "GPL-3.0-or-later",
   "devDependencies": {
     "@types/bun": "latest"
@@ -20,5 +20,8 @@
       "types": "./src/Types/index.ts"
     },
     "./package.json": "./package.json"
+  },
+  "dependencies": {
+    "cote": "^1.2.0"
   }
 }

@@ -1,18 +1,18 @@
 import {
-  Responder,
+  Publisher,
   type DiscoveryOptions,
   type Event,
   type ResponderAdvertisement,
 } from "cote";
 
-export class ExtendedResponder {
-  public cote: Responder;
+export class ExtendedPublisher {
+  public cote: Publisher;
 
   constructor(
     options: ResponderAdvertisement,
     discoveryOptions?: DiscoveryOptions
   ) {
-    this.cote = new Responder(options, discoveryOptions);
+    this.cote = new Publisher(options, discoveryOptions);
     this._autowire();
   }
 
@@ -21,15 +21,14 @@ export class ExtendedResponder {
     const privFuncs = ["constructor", "_autowire", "on", "eventNames"];
     for (const key of Object.getOwnPropertyNames(proto)) {
       if (privFuncs.some((v) => v === key) || key.startsWith("c_")) continue;
-      // Wrap the responder callback to bind `this` to the class instance
       this.cote.on(key, (req: Event, cb: Function) => {
-        try {
-          const func = (this as any)[key] as (req: Event, cb: Function) => void;
-          if (typeof func === "function") {
-            func.call(this, req, cb);
-          }
-        } catch (error) {
-          cb(error);
+        const func = (this as any)[key] as (
+          req: Event,
+          cb: Function,
+          publisher: Publisher
+        ) => void;
+        if (typeof func === "function") {
+          func.call(this, req, cb, this.cote);
         }
       });
     }

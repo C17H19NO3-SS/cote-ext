@@ -36,182 +36,158 @@ Project overview
 
 Installation
 
-If you publish this package to npm, consumers can install it:
+# cote-ext
 
-```bash
-npm install cote-ext
-```
+Professional TypeScript helpers for cote.js — source-first package
 
-During development, run the examples using `bun` (recommended for direct TypeScript), `tsx`, or `ts-node`.
+cote-ext provides compact, TypeScript-first helpers that simplify building cote Requesters/Responders/Publisher/Subscriber classes. The project is source-first (it exposes `.ts` sources directly) so you can iterate quickly using runtimes like Bun, tsx, or tools such as ts-node.
 
----
+This README documents how to run the included test/demo classes (in `src/Test`), explains the provided helpers, and gives troubleshooting notes and recommended scripts.
 
-Quick examples (copied from `src/Test`)
+Table of contents
 
-These examples are verbatim from the repository. Use them to validate the project locally.
-
-A. Single-process demo (quick test)
-
-File: `src/Test/index.ts`
-
-```ts
-import { TestRequester } from "./TestRequester";
-import { TestResponder } from "./TestResponder";
-
-// Start responder in the same process (convenient for quick testing)
-new TestResponder();
-
-// Send a test request and print the response
-console.log("Response >", await new TestRequester().test({ hello: "world" }));
-```
-
-Run (single terminal):
-
-```powershell
-bun run src/Test/index.ts
-# or
-npx tsx src/Test/index.ts
-```
-
-B. Separate processes (server + client)
-
-Responder (server) — `src/Test/TestResponder.ts`:
-
-```ts
-import type { Event } from "cote";
-import { ExtendedResponder } from "../Classes/Responder";
-
-export class TestResponder extends ExtendedResponder {
-  constructor() {
-    super({ name: "responder", key: "demo" });
-  }
-
-  test(req: Event, cb: (err: unknown, res?: any) => void) {
-    console.log("Request received >", req);
-    cb(null, { ok: true, echo: req });
-  }
-}
-```
-
-Start the responder (terminal 1):
-
-```powershell
-bun run src/Test/TestResponder.ts
-# or
-npx tsx src/Test/TestResponder.ts
-```
-
-Requester (client) — use the TestRequester or `src/Samples/Client.ts`:
-
-```ts
-// src/Test/TestRequester.ts
-import { ExtendedRequester } from "../Classes/Requester";
-
-export class TestRequester extends ExtendedRequester {
-  constructor() {
-    super({ name: "requester", key: "demo" });
-  }
-
-  test(req: Record<string, any>) {}
-}
-```
-
-Run the client after the responder is running (terminal 2):
-
-```powershell
-bun run src/Test/index.ts
-# or run a client file that uses TestRequester
-```
-
-Notes on discovery: small local demos often need a short delay before the client sends requests. Example: `await new Promise(r => setTimeout(r, 1200))`.
+- Overview
+- Quick start (run tests in `src/Test`)
+  - Single-process demo (quick)
+  - Separate processes (server + client)
+- Test files (what's inside `src/Test`)
+- API reference (short)
+- Development & running (commands)
+- Troubleshooting
+- Next steps
+- License
 
 ---
 
-API reference
+Overview
 
-ExtendedRequester (src/Classes/Requester.ts)
-
-- Behavior:
-  - Creates an internal `cote.Requester` instance and inspects the subclass prototype.
-  - Replaces non-private prototype methods with wrappers that call `this.cote.send({ type: methodName, ...payload }, cb)`.
-  - Wrappers return a Promise when no callback is provided, otherwise they call the provided callback.
-
-ExtendedResponder (src/Classes/Responder.ts)
-
-- Behavior:
-  - Creates an internal `cote.Responder` instance and autowires prototype methods as handlers using `responder.on(methodName, handler)`.
-  - Handler methods should accept `(req, cb)` and use the callback to return results.
-
-Type tips
-
-- Since the package is source-first, ensure method signatures are flexible (accept optional callback and/or options) so the runtime wrappers can be used both with Promise and callback styles. See `src/Samples/Client.ts` for recommended shapes.
+- This repo provides `ExtendedRequester`, `ExtendedResponder`, `ExtendedPublisher`, and `ExtendedSubscriber` classes under `src/Classes` that autowire communication by inspecting subclass prototypes.
+- Example/test code is located in `src/Test`. Use those files as canonical examples for how to use the helpers.
 
 ---
 
-Running & development
+Quick start — run the tests in `src/Test`
 
-Recommend using `bun` for quick local runs. Alternative: `tsx` or `ts-node`.
+Prerequisites
 
-Example scripts (add them to `package.json` for convenience):
+- Node (v16+ recommended)
+- Either Bun (recommended for running `.ts` directly) OR `npx ts-node-esm` / `tsx` for TypeScript execution
+- Project dependencies (install with npm/yarn/pnpm):
+
+```powershell
+npm install
+```
+
+Single-process demo (quick)
+
+The `src/Test/index.ts` file starts a responder in-process and runs simple pub/sub + request/response flows. It uses the test classes in `src/Test` which log to the console when handlers run.
+
+Run in a single terminal (Bun):
+
+```powershell
+bun x src/Test/index.ts
+```
+
+Or with ts-node (if Bun is not installed):
+
+```powershell
+npx ts-node-esm src/Test/index.ts
+```
+
+You should see console logs showing when each test handler is called and what responses are produced.
+
+Separate processes (server + client)
+
+You can run responder and requester in separate terminals. The responder will listen for requests; the requester/client will send requests.
+
+Terminal 1 — start responder (example uses the TestResponder class):
+
+```powershell
+bun x src/Test/TestResponder.ts
+# OR
+npx ts-node-esm src/Test/TestResponder.ts
+```
+
+Terminal 2 — run the client (uses TestRequester / TestPublisher / TestSubscriber):
+
+```powershell
+bun x src/Test/index.ts
+# OR
+npx ts-node-esm src/Test/index.ts
+```
+
+Note: discovery in cote can take a short time on local runs. If you see timeouts or no responses, add a short delay before sending requests (for example: `await new Promise(r => setTimeout(r, 300))`).
+
+---
+
+Test files (what's in `src/Test`)
+
+- `TestResponder.ts` — an `ExtendedResponder` that logs when its `test` handler is called and responds via the callback.
+- `TestRequester.ts` — an `ExtendedRequester`; it provides `c_test` (non-autowired helper) which logs before/after sending and calls the auto-wired `test` method.
+- `TestPublisher.ts` — an `ExtendedPublisher` which logs when its `testEvent` handler is invoked and what it returns.
+- `TestSubscriber.ts` — an `ExtendedSubscriber` which logs when it receives emits and returns a result. (The class uses the autowiring in `src/Classes/Subscriber.ts`.)
+- `index.ts` — a convenience runner that uses the above classes to exercise request/response and pub/sub flows and prints detailed logs.
+
+These test classes are intentionally self-contained and log to the console so you can observe how the helpers autowire methods and how messages flow through cote.
+
+---
+
+Short API reference
+
+- `ExtendedRequester` (src/Classes/Requester.ts)
+
+  - Creates an internal `cote.Requester` and auto-creates Promise-wrapping methods on the subclass for each non-private prototype method. Methods call `cote.send({ type: methodName, ...payload }, cb)` internally.
+
+- `ExtendedResponder` (src/Classes/Responder.ts)
+
+  - Creates an internal `cote.Responder` and registers prototype methods as handlers. Methods should take `(req, cb)` and use the callback to return results.
+
+- `ExtendedPublisher` / `ExtendedSubscriber`
+  - Publisher methods are registered as handlers and receive `(req, cb, publisher)` so you can access the publisher instance if needed.
+  - Subscriber methods call `this.cote.emit(eventName, payload, callback)` via an autowired wrapper — methods can be async and return values (the wrapper converts to Promise).
+
+See the source under `src/Classes` for exact behavior and types.
+
+---
+
+Development & recommended scripts
+
+Add the following convenience scripts to `package.json` if you want quick commands:
 
 ```jsonc
 "scripts": {
-  "start:responder": "bun run src/Test/TestResponder.ts",
-  "start:client": "bun run src/Test/index.ts"
+  "test:single": "bun x src/Test/index.ts",
+  "start:responder": "bun x src/Test/TestResponder.ts",
+  "start:client": "bun x src/Test/index.ts",
+  "typecheck": "npx tsc -p tsconfig.json --noEmit"
 }
 ```
 
-Type checking locally:
+If Bun is not available, replace `bun x` with `npx ts-node-esm` or `npx tsx`.
 
-```bash
-npm install
+Type checking
+
+```powershell
 npx tsc -p tsconfig.json --noEmit
 ```
 
 ---
 
-Distribution & publishing notes
-
-Current package is configured as a TypeScript-source package:
-
-- `module` -> `src/index.ts`
-- `types` -> `src/Types/index.ts`
-- `exports` -> includes type entry and source entry
-
-Recommendations before publishing:
-
-- Confirm `package.json` metadata: `name`, `version`, `description`, `author`, `repository`.
-- Choose distribution strategy:
-  - Source-first (current): publish `src/`, document that consumers need TS-aware runtimes.
-  - Compiled: add a build step to emit `dist/` and update `main/module/types` to point to `dist/`.
-- Add `files` in `package.json` to explicitly include what you want to publish, e.g. `["src","README.md","LICENSE"]`.
-
----
-
-Contributing
-
-- Fork, create a topic branch, run `npx tsc --noEmit`, open a PR with tests or sample updates.
-
----
-
 Troubleshooting
 
-- Decorator/typing issues: ensure method implementations accept the parameter shapes expected by wrappers (payload, optional options or callback).
-- Discovery timing: in local runs add a short delay before sending requests.
-- If consumers cannot import `.ts` files, either publish compiled JS or instruct consumers to use `bun`/`tsx`/`ts-node`.
+- "type.slice is not a function" — root cause: an event emitter received a non-string event name (often because an object was passed as the first argument). The helpers in `src/Classes` wrap emit/send calls to ensure the event name is a string and the payload is a separate argument.
+- `this.cote` is undefined inside a handler — root cause: handler method was called without being bound to the instance. The autowire code now wraps handlers and calls them with `.call(this,...)` to preserve instance context.
+- Discovery/timeouts — add a short delay (300–1200ms) before sending requests in local single-process tests.
+- Running TypeScript files directly — prefer Bun, `tsx`, or `ts-node` which understand TS source import semantics. If consumers cannot load `.ts`, either publish compiled JS or document the required runtimes.
+
+If you run into a specific error, open the file under `src/Test` referenced by the stack trace and check the test log lines — the test classes log entry and exit points to make debugging easier.
 
 ---
 
-License
+Next steps (I can help with any of these):
 
-This project is licensed under GPLv3 (see `LICENSE`).
+- Add the `scripts` above to `package.json` automatically.
+- Add a minimal GitHub Actions workflow for typechecking (`npx tsc --noEmit`).
+- Generate a small sample `dist` build pipeline to publish compiled JS instead of source-first.
 
----
-
-If you want, I can now:
-
-- Add the `start:responder` / `start:client` scripts directly to `package.json`.
-- Add a minimal GitHub Actions workflow that runs `npx tsc --noEmit` on PRs.
-- Convert this README's examples to use package-root imports (i.e., `import { ExtendedRequester } from 'cote-ext'`) to show published usage.
-
-Which one would you like next?
+Tell me which of the above you want next and I'll implement it.
